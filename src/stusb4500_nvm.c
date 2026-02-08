@@ -392,5 +392,11 @@ bool stusb4500_nvm_flash(stusb4500_t const* dev, stusb4500_nvm_config_t const* c
 
     if (!stusb4500_nvm_read(dev, (uint8_t*)nvm)) return false;
 
-    return (memcmp(nvm, nvm_modified, NVM_SIZE) == 0);
+    if (memcmp(nvm, nvm_modified, NVM_SIZE) == 0)
+    {
+        stusb4500_sw_reset(dev);
+        return true;
+    }
+
+    return false;
 }

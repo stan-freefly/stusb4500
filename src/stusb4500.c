@@ -1,3 +1,8 @@
+
+#include <stdio.h>
+
+#define STUSB4500_LOG(fmt, ...) printf(fmt, ##__VA_ARGS__ )
+
 #include "stusb4500.h"
 
 // STUSB4500 registers
@@ -12,6 +17,7 @@
 #define STUSB_RX_HEADER 0x31UL
 #define STUSB_RX_DATA_OBJ 0x33UL
 #define STUSB_TX_HEADER 0x51UL
+#define STUSB_PDO_NUMB 0x70UL
 #define STUSB_DPM_SNK_PDO1 0x85UL
 
 // STUSB4500 masks/constants
@@ -64,7 +70,7 @@
     ((((pdo)&PDO_VOLTAGE_MSK) >> PDO_VOLTAGE_POS) * PDO_VOLTAGE_RESOLUTION)
 #define TO_PDO_VOLTAGE(mv) ((((mv) / PDO_VOLTAGE_RESOLUTION) << PDO_VOLTAGE_POS) & PDO_VOLTAGE_MSK)
 
-#define TIMEOUT_MS 500UL
+#define TIMEOUT_MS 1000UL
 
 typedef uint32_t stusb4500_power_t;
 typedef uint32_t stusb4500_pdo_t;
@@ -142,6 +148,7 @@ static bool load_optimal_pdo(
         stusb4500_power_t pdo_power =
           (stusb4500_power_t)pdo_current * (stusb4500_power_t)pdo_voltage / 1000UL;
 
+        if(PDO_TYPE(pdo) == PDO_TYPE_FIXED)
         STUSB4500_LOG(
           "Detected Source PDO: %2d.%03dV, %d.%03dA, %3d.%03dW\r\n",
           (int)(pdo_voltage / 1000UL),
@@ -155,7 +162,7 @@ static bool load_optimal_pdo(
           PDO_TYPE(pdo) != PDO_TYPE_FIXED || pdo_current < config->min_current_ma ||
           pdo_voltage < config->min_voltage_mv || pdo_voltage > config->max_voltage_mv)
             continue;
-        if (pdo_power > opt_pdo_power) {
+        if (pdo_power >= opt_pdo_power) {
             opt_pdo_current = pdo_current;
             opt_pdo_voltage = pdo_voltage;
             opt_pdo_power = pdo_power;
@@ -277,4 +284,38 @@ bool stusb4500_set_gpio_state(stusb4500_t const* dev, stusb4500_gpio_state_t sta
 
     // Set GPIO state
     return dev->write(dev->addr, STUSB_GPIO3_SW_GPIO, &state, sizeof(state), dev->context);
+}
+
+// Output disabled when only_above_5v enabled
+bool stusb4500_v5_pdo_only(stusb4500_t const *dev, bool enable)
+{
+    // Sanity check to see if STUSB4500 is there
+    if (!is_present(dev))
+        return false;
+
+    uint8_t pdo_count = 3; // All, reaload from config ?
+
+    if (enable)
+    {
+        pdo_count = 1;
+    }
+
+    if (!dev->write(dev->addr,STUSB_PDO_NUMB,&pdo_count,1,dev->context)) return false;
+
+    if (!send_pd_message(dev, PD_SOFT_RESET))
+        return false;
+    return true;
+}
+
+bool stusb4500_sw_reset(stusb4500_t const *dev)
+{
+    // Sanity check to see if STUSB4500 is there
+    if (!is_present(dev))
+        return false;
+
+    uint8_t data = 0x01;
+
+    if (!dev->write(dev->addr, STUSB_RESET_CTRL, &data, 1, dev->context)) return false;
+
+    return true;
 }
