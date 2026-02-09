@@ -73,5 +73,6 @@ bool stusb4500_set_gpio_state(stusb4500_t const* dev, stusb4500_gpio_state_t sta
 bool stusb4500_nvm_read(stusb4500_t const* dev, uint8_t* nvm);
 bool stusb4500_nvm_flash(stusb4500_t const* dev, stusb4500_nvm_config_t const* config);
 
-bool stusb4500_v5_pdo_only(stusb4500_t const* dev,bool enable);
+bool stusb4500_is_present(stusb4500_t const *dev);
+bool stusb4500_select_pdo(stusb4500_t const* dev,uint8_t pdo);
 bool stusb4500_sw_reset(stusb4500_t const* dev);

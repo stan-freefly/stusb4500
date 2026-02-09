@@ -286,21 +286,19 @@ bool stusb4500_set_gpio_state(stusb4500_t const* dev, stusb4500_gpio_state_t sta
     return dev->write(dev->addr, STUSB_GPIO3_SW_GPIO, &state, sizeof(state), dev->context);
 }
 
+bool stusb4500_is_present(stusb4500_t const *dev)
+{
+    return is_present(dev);
+}
+
 // Output disabled when only_above_5v enabled
-bool stusb4500_v5_pdo_only(stusb4500_t const *dev, bool enable)
+bool stusb4500_select_pdo(stusb4500_t const *dev, uint8_t pdo_num)
 {
     // Sanity check to see if STUSB4500 is there
     if (!is_present(dev))
         return false;
 
-    uint8_t pdo_count = 3; // All, reaload from config ?
-
-    if (enable)
-    {
-        pdo_count = 1;
-    }
-
-    if (!dev->write(dev->addr,STUSB_PDO_NUMB,&pdo_count,1,dev->context)) return false;
+    if (!dev->write(dev->addr,STUSB_PDO_NUMB,&pdo_num,1,dev->context)) return false;
 
     if (!send_pd_message(dev, PD_SOFT_RESET))
         return false;
